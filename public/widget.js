@@ -4,7 +4,7 @@
         position: 'bottom-right',
         primaryColor: '#0000FF',
         chatButtonText: 'Chat',
-        serverUrl: 'http://localhost:3000'
+        serverUrl: 'https://excel-chat-phi.vercel.app'
       };
       const widgetConfig = { ...defaultConfig, ...config };
   

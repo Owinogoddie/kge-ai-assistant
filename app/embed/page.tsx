@@ -24,8 +24,10 @@ export default function EmbedPage() {
   }, []);
 
   return (
-    <div style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+    <div style={{ height: '100vh', width: '100vw', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <div style={{ width: '100%', maxWidth: '400px', height:'100vh' }}> {/* Adjust maxWidth as needed */}
       <EmbedChatInterface/>
     </div>
+  </div>
   );
 }
