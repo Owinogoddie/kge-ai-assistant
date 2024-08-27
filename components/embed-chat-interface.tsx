@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from "ai/react";
 import MarkdownRenderer from './markdown-renderer';
@@ -8,10 +6,12 @@ export default function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [welcomeMessage, setWelcomeMessage] = useState('');
 
   const { messages, input, handleInputChange, handleSubmit, isLoading: chatEndpointIsLoading } =
     useChat({
       api: '/api/chat',
+      initialMessages: [],
       onResponse(response) {
         setIsStreaming(true);
       },
@@ -29,7 +29,22 @@ export default function ChatInterface() {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [messages, welcomeMessage]);
+
+  useEffect(() => {
+    const welcomeText = "Welcome! I'm an AI assistant specialized in answering questions about AI, RAG (Retrieval-Augmented Generation), and related topics. How can I help you today?";
+    let index = 0;
+    const intervalId = setInterval(() => {
+      if (index < welcomeText.length) {
+        setWelcomeMessage((prev) => welcomeText.slice(0, index + 1));
+        index++;
+      } else {
+        clearInterval(intervalId);
+      }
+    }, 20);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   async function sendMessage(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -55,6 +70,13 @@ export default function ChatInterface() {
         ref={messageContainerRef}
         style={{ maxHeight: 'calc(100% - 140px)' }}
       >
+        {welcomeMessage && (
+          <div className="mb-4 flex justify-start">
+            <span className="inline-block p-3 rounded-lg max-w-xs sm:max-w-sm shadow-md bg-gray-100 text-gray-800">
+              <MarkdownRenderer content={welcomeMessage} />
+            </span>
+          </div>
+        )}
         {messages.map((message, index) => (
           <div key={index} className={`mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <span
