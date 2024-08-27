@@ -50,7 +50,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to store documents' }, { status: 500 });
   }
 }
-
-export const config = {
-  api: { bodyParser: false },
-};
