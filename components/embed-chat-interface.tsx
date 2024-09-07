@@ -61,12 +61,12 @@ export default function ChatInterface() {
   }
 
   return (
-    <div className="h-full w-full bg-gradient-to-br from-gray-100 to-gray-200 backdrop-blur-lg p-4 flex flex-col rounded-lg shadow-2xl">
-      <div className="bg-white rounded-t-lg p-3 mb-4 shadow-md">
+    <div className="h-full w-full bg-gradient-to-br from-orange-200 via-slate-300 to-red-200 backdrop-blur-lg p-4 flex flex-col rounded-lg shadow-2xl">
+      <div className="bg-white/20 rounded-t-lg p-3 mb-4 shadow-md">
         <h2 className="text-2xl font-bold text-gray-800 text-center">Smart Assistant</h2>
       </div>
       <div 
-        className="flex-grow overflow-y-auto mb-4 no-scrollbar bg-white rounded-lg shadow-inner p-4" 
+        className="flex-grow overflow-y-auto mb-4 no-scrollbar bg-white/50 rounded-lg shadow-inner p-4" 
         ref={messageContainerRef}
         style={{ maxHeight: 'calc(100% - 140px)' }}
       >
@@ -82,7 +82,7 @@ export default function ChatInterface() {
             <span
               className={`inline-block p-3 rounded-lg max-w-xs sm:max-w-sm shadow-md ${
                 message.role === 'user'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-blue-600/70 text-white'
                   : 'bg-gray-100 text-gray-800'
               }`}
             >
@@ -119,6 +119,7 @@ export default function ChatInterface() {
           )}
         </button>
       </form>
+      <p className="mt-2 text-center text-white">Powered by &copy; owinogoddy</p>
     </div>
   );
 }

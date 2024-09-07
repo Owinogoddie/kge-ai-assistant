@@ -1,10 +1,10 @@
 (function() {
     function createChatWidget(config) {
+      console.log('first')
       const defaultConfig = {
-        position: 'bottom-right',
         primaryColor: '#0000FF',
-        chatButtonText: 'Chat',
-        serverUrl: 'https://excel-chat-phi.vercel.app'
+        serverUrl: 'http://localhost:3000'
+        // serverUrl: 'https://excel-chat-phi.vercel.app'
       };
       const widgetConfig = { ...defaultConfig, ...config };
   
@@ -39,8 +39,8 @@
         iframe.style.border = 'none';
         iframe.style.boxShadow = '0 0 10px rgba(0,0,0,0.1)';
         iframe.style.zIndex = '1000';
-        iframe.style.width = '350px';
-        iframe.style.height = '500px';
+        iframe.style.width = '400px';
+        iframe.style.height = '600px';
         iframe.style.borderRadius = '10px';
         iframe.style.bottom = '90px';
         iframe.style.right = '20px';
@@ -64,8 +64,8 @@
           iframe.style.bottom = '80px';
           iframe.style.borderRadius = '0';
         } else {
-          iframe.style.width = '350px';
-          iframe.style.height = '500px';
+          iframe.style.width = '400px';
+          iframe.style.height = '600px';
           iframe.style.borderRadius = '10px';
           iframe.style.bottom = '90px';
           iframe.style.right = '20px';

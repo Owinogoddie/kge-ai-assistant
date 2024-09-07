@@ -20,6 +20,8 @@ export default function RootLayout({
         <div className="">
         {children}
         </div>
+{/*         
+    <script src="http://localhost:3000/widget.js"></script> */}
       </body>
     </html>
   );
