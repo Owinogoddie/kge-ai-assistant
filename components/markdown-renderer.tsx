@@ -1,5 +1,3 @@
-// components/MarkdownRenderer.tsx
-
 import formatMarkdown from '@/utils/markdownFormatter';
 import React from 'react';
 

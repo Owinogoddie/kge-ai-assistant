@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { parse } from 'papaparse';
-import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
+import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai"; // Import Google embeddings
 import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
 import { createClient } from '@supabase/supabase-js';
+import { TaskType } from "@google/generative-ai";
+import { googleEmbeddings } from '@/utils/embeddings';
 
-const embeddings = new HuggingFaceInferenceEmbeddings({
-  apiKey: process.env.HUGGINGFACEHUB_API_KEY,
-  model: "sentence-transformers/all-MiniLM-L6-v2"
-});
+// // Initialize Google Generative AI embeddings with 768 dimensions
+// const embeddings = new GoogleGenerativeAIEmbeddings({
+//   model: "embedding-001", // 768-dimensional embedding model
+//   taskType: TaskType.RETRIEVAL_DOCUMENT,
+//   title: "Document title",
+// });
 
 const supabaseClient = createClient(
   process.env.SUPABASE_URL!,
@@ -30,7 +34,7 @@ async function processDocuments(documents: any[]) {
 
   for (const doc of documents) {
     const { data, error } = await supabaseClient
-      .from('documents')
+      .from('documents_768')
       .select('id')
       .eq('metadata->>question', doc.metadata.question)
       .eq('metadata->>answer', doc.metadata.answer)
@@ -54,7 +58,6 @@ async function processDocuments(documents: any[]) {
 
   return { processedDocs, duplicates };
 }
-
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -106,11 +109,11 @@ export async function POST(request: NextRequest) {
 
     const result = await SupabaseVectorStore.fromDocuments(
       processedDocs,
-      embeddings,
+      googleEmbeddings,
       {
         client: supabaseClient,
-        tableName: "documents",
-        queryName: "match_documents",
+        tableName: "documents_768", 
+        queryName: "match_documents_768", 
       }
     );
 
@@ -121,7 +124,7 @@ export async function POST(request: NextRequest) {
       addedCount: processedDocs.length, 
       duplicateCount: duplicates.length 
     });
-  } catch (error:any) {
+  } catch (error: any) {
     if (error.message === 'All documents are duplicates.') {
       console.error('No documents added: All provided documents were duplicates.');
       return NextResponse.json({ 

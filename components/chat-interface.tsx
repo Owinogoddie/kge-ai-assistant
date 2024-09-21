@@ -1,49 +1,52 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from "ai/react";
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import MarkdownRenderer from './markdown-renderer';
-
-type Sender = 'user' | 'ai';
-
-interface Message {
-  text: string;
-  sender: Sender;
-}
 
 export default function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
+  const [welcomeMessage, setWelcomeMessage] = useState('');
 
-  const { messages, input, setInput, handleInputChange, handleSubmit, isLoading: chatEndpointIsLoading, setMessages } =
+  const { messages, input, handleInputChange, handleSubmit, isLoading: chatEndpointIsLoading } =
     useChat({
       api: '/api/chat',
+      initialMessages: [],
       onResponse(response) {
         // Process any headers or response data here if needed
       },
       streamMode: "text",
       onError: (e) => {
-        // toast(e.message, {
-        //   theme: "dark"
-        // });
-        console.log("errrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr")
+        console.error("Chat error:", e);
       }
     });
 
   useEffect(() => {
-    // Scroll to bottom of message list whenever messages change
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, welcomeMessage]);
+
+  useEffect(() => {
+    const welcomeText = "Welcome! I'm an AI assistant specialized in answering questions about KGE internships. How can I help you today?";
+    let index = 0;
+    const intervalId = setInterval(() => {
+      if (index < welcomeText.length) {
+        setWelcomeMessage((prev) => welcomeText.slice(0, index + 1));
+        index++;
+      } else {
+        clearInterval(intervalId);
+      }
+    }, 20);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   async function sendMessage(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (messageContainerRef.current) {
       messageContainerRef.current.classList.add("grow");
-    }
-    if (!messages.length) {
-      await new Promise(resolve => setTimeout(resolve, 300));
     }
     if (chatEndpointIsLoading) {
       return;
@@ -55,6 +58,13 @@ export default function ChatInterface() {
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-lg shadow-lg p-4 max-w-2xl mx-auto">
       <div className="h-96 overflow-y-auto mb-4" ref={messageContainerRef}>
+        {welcomeMessage && (
+          <div className="mb-4 flex justify-start">
+            <span className="inline-block p-2 rounded-lg max-w-xs sm:max-w-sm bg-gray-300 text-gray-900 text-left">
+              <MarkdownRenderer content={welcomeMessage} />
+            </span>
+          </div>
+        )}
         {messages.map((message, index) => (
           <div key={index} className={`mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <span
@@ -65,7 +75,6 @@ export default function ChatInterface() {
               }`}
             >
               <MarkdownRenderer content={message.content} />
-              
             </span>
           </div>
         ))}

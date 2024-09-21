@@ -13,6 +13,8 @@ import {
   BytesOutputParser,
   StringOutputParser,
 } from "@langchain/core/output_parsers";
+import { googleEmbeddings } from "@/utils/embeddings";
+
 
 export const runtime = "edge";
 
@@ -46,11 +48,9 @@ const condenseQuestionPrompt = PromptTemplate.fromTemplate(
   CONDENSE_QUESTION_TEMPLATE,
 );
 
-const ANSWER_TEMPLATE = `You are an expert in this subject area. Please use the following information to answer the question as accurately and clearly as possible and be as natural as possible. and where needed provide answers in numbering.
-if a user asks questions like "hello", "hi", "hey", "how are you", "good morning", "good afternoon", 
-    "good evening", "what's up", "nice to meet  you" answer them like a normal person would not following context.
-  
-Answer the question based ONLY on the following context and chat history:
+const ANSWER_TEMPLATE = `You are an AI assistant specialized in answering questions ONLY about KGE internships. Your knowledge is limited to the information provided in the context below. Do not use any external knowledge.
+
+Answer the question based ONLY on the following context about KGE internships:
 <context>
   {context}
 </context>
@@ -60,13 +60,17 @@ Answer the question based ONLY on the following context and chat history:
 </chat_history>
 
 Question: {question}
-IMPORTANT: If the question cannot be answered specifically and accurately using ONLY the information provided in the context above, you MUST respond with EXACTLY the following message:
-"I'm sorry, I couldn't find the information you're looking for."
 
-Do not use any external knowledge or information not provided in the context.
+IMPORTANT: 
+1. Only answer questions related to KGE internships.
+2. If asked "What do you do?", respond with: "I am an AI assistant specialized in providing information about KGE internships. I can answer questions about application processes, requirements, roles, and experiences specific to KGE internships. How can I help you with KGE internships today?"
+3. For any question not specifically about KGE internships or if the information is not in the context, respond with: "I'm an AI assistant focused on KGE internships. I don't have information about that, but I'd be happy to answer any questions you have about KGE internships. What would you like to know about KGE internship opportunities, application processes, or experiences?"
+4. When providing information that can be presented as a list (e.g., steps, requirements, benefits), use a numbered list format. For example:
+   1. First item
+   2. Second item
+   3. Third item
 
-Answer:
-`;
+Answer:`;
 const answerPrompt = PromptTemplate.fromTemplate(ANSWER_TEMPLATE);
 
 export async function POST(req: NextRequest) {
@@ -78,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     const model =new ChatGroq({
       apiKey: process.env.GROQ_API_KEY!,
-      temperature: 0.7,
+      temperature: 0.5,
       model: "mixtral-8x7b-32768",
     });
 
@@ -86,15 +90,16 @@ export async function POST(req: NextRequest) {
       apiKey: process.env.HUGGINGFACEHUB_API_KEY!,
       model: "sentence-transformers/all-MiniLM-L6-v2",
     });
+    // const embeddings=await getEmbeddings()
 
     const client = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
-    const vectorstore = new SupabaseVectorStore(embeddings, {
+    const vectorstore = new SupabaseVectorStore(googleEmbeddings, {
       client,
-      tableName: "documents",
-      queryName: "match_documents",
+      tableName: "documents_768",
+      queryName: "match_documents_768",
     });
 
     const standaloneQuestionChain = RunnableSequence.from([

@@ -1,7 +1,9 @@
 'use client';
 
+import AuthModal from '@/components/auth-modal';
+import { useAuthStore } from '@/stores/authStore';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 
 const FileUploader = dynamic(() => import('@/components/excel-uploader'), {
   ssr: false,
@@ -21,7 +23,21 @@ interface ProcessingResult {
 export default function Home() {
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<ProcessingResult | null>(null);
+  const { isAuthenticated, setIsAuthenticated } = useAuthStore();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+    }
+  }, [isAuthenticated]);
+
+  const handleAuth = (success: boolean) => {
+    if (success) {
+      setIsAuthenticated(true);
+      setShowAuthModal(false);
+    }
+  };
   const handleSubmit = async (file: File | null, manualEntries: QAEntry[]) => {
     setProcessing(true);
     const formData = new FormData();
@@ -54,7 +70,9 @@ export default function Home() {
       setProcessing(false);
     }
   };
-
+  if (!isAuthenticated) {
+    return showAuthModal ? <AuthModal onAuth={handleAuth} /> : null;
+  }
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
