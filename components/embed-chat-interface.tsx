@@ -32,7 +32,7 @@ export default function ChatInterface() {
   }, [messages, welcomeMessage]);
 
   useEffect(() => {
-    const welcomeText = "Welcome! I'm an AI assistant specialized in answering questions about AI, RAG (Retrieval-Augmented Generation), and related topics. How can I help you today?";
+    const welcomeText = "Welcome! I'm an AI assistant specialized in answering questions about KGE internships. How can I help you today?";
     let index = 0;
     const intervalId = setInterval(() => {
       if (index < welcomeText.length) {

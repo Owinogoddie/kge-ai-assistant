@@ -48,7 +48,7 @@ const condenseQuestionPrompt = PromptTemplate.fromTemplate(
 
 const ANSWER_TEMPLATE = `You are an expert in this subject area. Please use the following information to answer the question as accurately and clearly as possible and be as natural as possible. and where needed provide answers in numbering.
 if a user asks questions like "hello", "hi", "hey", "how are you", "good morning", "good afternoon", 
-    "good evening", "what's up", "nice to meet you" answer them like a normal person would not following context.
+    "good evening", "what's up", "nice to meet  you" answer them like a normal person would not following context.
   
 Answer the question based ONLY on the following context and chat history:
 <context>
