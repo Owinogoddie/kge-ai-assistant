@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Message as VercelChatMessage, StreamingTextResponse } from "ai";
-
 import { createClient } from "@supabase/supabase-js";
-import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
-
 import { ChatGroq } from "@langchain/groq";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
 import { Document } from "@langchain/core/documents";
 import { RunnableSequence } from "@langchain/core/runnables";
-import {
-  BytesOutputParser,
-  StringOutputParser,
-} from "@langchain/core/output_parsers";
-import  {googleEmbeddings}  from "@/utils/embeddings";
+import { BytesOutputParser, StringOutputParser } from "@langchain/core/output_parsers";
+import { googleEmbeddings } from "@/utils/embeddings";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { validMessages } from "./first-messages";
-
 
 export const runtime = "edge";
 
@@ -46,9 +38,7 @@ const CONDENSE_QUESTION_TEMPLATE = `Given the following conversation and a follo
 
 Follow Up Input: {question}
 Standalone question:`;
-const condenseQuestionPrompt = PromptTemplate.fromTemplate(
-  CONDENSE_QUESTION_TEMPLATE,
-);
+const condenseQuestionPrompt = PromptTemplate.fromTemplate(CONDENSE_QUESTION_TEMPLATE);
 
 const ANSWER_TEMPLATE = `You are an AI assistant specialized in answering questions ONLY about KGE internships. Your knowledge is limited to the information provided in the context below. Do not use any external knowledge.
 
@@ -75,22 +65,25 @@ IMPORTANT:
 Answer:`;
 const answerPrompt = PromptTemplate.fromTemplate(ANSWER_TEMPLATE);
 
+const VERIFY_ANSWER_TEMPLATE = `You are a verification assistant. Your task is to verify if the given answer is relevant to the question and specifically about KGE internships.
+
+Question: {question}
+Answer: {answer}
+
+Is this answer relevant to the question and specifically about KGE internships? Respond with YES or NO, followed by a brief explanation.
+
+Response:`;
+const verifyAnswerPrompt = PromptTemplate.fromTemplate(VERIFY_ANSWER_TEMPLATE);
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const messages = body.messages ?? [];
     const previousMessages = messages.slice(0, -1);
-    const currentMessageContent = messages[messages.length - 1].content.toLowerCase().trim();
+    const currentMessageContent = messages[messages.length - 1].content;
 
     console.log("Current message content:", currentMessageContent);
 
-
-    if (validMessages.includes(currentMessageContent)){
-      const staticResponse = "I am an AI assistant specialized in providing information about KGE internships. I can help you with questions about application processes, requirements, roles, and experiences specific to KGE internships. How can I assist you today?";
-      return new NextResponse( staticResponse );
-    }
-    
-    // Continue with embedding generation and answer process for more complex questions
     const model = new ChatGroq({
       apiKey: process.env.GROQ_API_KEY!,
       temperature: 0.5,
@@ -108,16 +101,22 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
+    console.log("Supabase client created");
+
     if (!googleEmbeddings) {
       console.error("Google Embeddings not initialized");
       return;
     }
+
+    console.log("Google Embeddings initialized");
 
     const vectorstore = new SupabaseVectorStore(googleEmbeddings, {
       client,
       tableName: "documents_768",
       queryName: "match_documents_768",
     });
+
+    console.log("Vector store created");
 
     const standaloneQuestionChain = RunnableSequence.from([
       condenseQuestionPrompt,
@@ -142,42 +141,74 @@ export async function POST(req: NextRequest) {
     });
 
     const retrievalChain = retriever.pipe((docs) => {
+      console.log("Documents before combination:", docs);
       const combined = combineDocumentsFn(docs);
+      console.log("Combined documents:", combined);
       return combined;
     });
+
+    const verifyAnswerChain = RunnableSequence.from([
+      verifyAnswerPrompt,
+      llm,
+      new StringOutputParser(),
+    ]);
 
     const answerChain = RunnableSequence.from([
       async (input) => {
         let question = input.question;
-        try {
-          const standaloneQuestion = await standaloneQuestionChain.invoke({
-            question: input.question,
-            chat_history: input.chat_history,
-          });
-          question = standaloneQuestion || input.question;
-        } catch (error) {
-          console.error("Error in standaloneQuestionChain:", error);
+        let attempts = 0;
+        let isRelevant = false;
+        let answer = "";
+
+        while (!isRelevant && attempts < 3) {
+          try {
+            console.log(`Attempt ${attempts + 1} - Question: ${question}`);
+            const standaloneQuestion = await standaloneQuestionChain.invoke({
+              question: question,
+              chat_history: input.chat_history,
+            });
+            console.log("Standalone question:", standaloneQuestion);
+            
+            const context = await retrievalChain.invoke(standaloneQuestion);
+            console.log("Retrieved context:", context);
+
+            answer = await answerPrompt.pipe(llm).pipe(new StringOutputParser()).invoke({
+              context: context,
+              chat_history: input.chat_history,
+              question: standaloneQuestion,
+            });
+            console.log("Generated answer:", answer);
+
+            const verificationResult = await verifyAnswerChain.invoke({
+              question: standaloneQuestion,
+              answer: answer,
+            });
+            console.log("Verification result:", verificationResult);
+
+            isRelevant = verificationResult.startsWith("YES");
+            if (!isRelevant) {
+              question = `Please rephrase the question to be more specific about KGE internships: ${standaloneQuestion}`;
+              attempts++;
+            }
+          } catch (error) {
+            console.error("Error in answer generation:", error);
+            break;
+          }
         }
+
         return {
-          context: await retrievalChain.invoke(question),
-          chat_history: input.chat_history,
+          answer: isRelevant ? answer : "I apologize, but I couldn't generate a relevant answer about KGE internships. Could you please rephrase your question or ask something more specific about KGE internships?",
           question: question,
         };
       },
-      answerPrompt,
       (result) => {
-        console.log("Model output:", result);
-        return result;
+        console.log("Final result:", result);
+        return result.answer;
       },
-      model,
     ]);
 
     const conversationalRetrievalQAChain = RunnableSequence.from([
       answerChain,
-      (result) => {
-        console.log("Final answer before parsing:", result);
-        return result;
-      },
       new BytesOutputParser(),
     ]);
 
@@ -187,7 +218,10 @@ export async function POST(req: NextRequest) {
       chat_history: formatVercelMessages(previousMessages),
     });
 
+    console.log("Stream created");
+
     const documents = await documentPromise;
+    console.log("Full documents:", documents);
 
     const serializedSources = Buffer.from(
       JSON.stringify(
@@ -200,6 +234,8 @@ export async function POST(req: NextRequest) {
       ),
     ).toString("base64");
 
+    console.log("Serialized sources created");
+
     return new StreamingTextResponse(stream, {
       headers: {
         "x-message-index": (previousMessages.length + 1).toString(),
@@ -208,6 +244,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (e: any) {
     console.error("API Error:", e);
+    console.error("Error stack:", e.stack);
     return NextResponse.json({ error: e.message, stack: e.stack }, { status: e.status ?? 500 });
   }
 }

@@ -1,7 +1,16 @@
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { TaskType } from "@google/generative-ai";
+let embeddings;
 
-export const googleEmbeddings = new GoogleGenerativeAIEmbeddings({
-  model: "embedding-001", // 768 dimensions
-  taskType: TaskType.RETRIEVAL_DOCUMENT,
-});
+try {
+  embeddings = new GoogleGenerativeAIEmbeddings({
+    apiKey: process.env.GOOGLE_API_KEY,
+    model: "embedding-001",
+    taskType: TaskType.RETRIEVAL_DOCUMENT,
+  });
+  console.log('embedings exists')
+} catch (error) {
+  console.error("Error creating Google Embeddings:", error);
+}
+
+export const googleEmbeddings = embeddings;
